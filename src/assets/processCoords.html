@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>
+        /* Add this CSS to your stylesheet or in a <style> tag in the <head> of your HTML document */
+
+        /* Style the table */
+        #csv-table {
+            border-collapse: collapse; /* Collapse borders and remove spacing between cells */
+            margin-top: 1em; 
+            margin-bottom: 1em; 
+        }
+
+        /* Style the table headers */
+        #csv-table th {
+            border: 1px solid #ccc; /* Add borders to table headers */
+            background-color: #007bff; /* Header background color */
+            color: #fff; /* Header text color */
+            text-align: left; /* Align header text to the left */
+            padding: 0.3em; 
+        }
+
+        /* Style the table cells */
+        #csv-table td {
+            border: 1px solid #ccc; /* Add borders to table cells */
+            text-align: left; /* Align cell text to the left */
+            padding: 0.3em; 
+        }
+
+        /* Style alternating rows with a background color */
+        #csv-table tr:nth-child(even) {
+            background-color: #f2f2f2; /* Background color for even rows */
+        }
+
+    </style>
+</head>
+<body>
+    <div id="prefix-input">
+        <label for="prefix">Prefix:</label>
+        <input type="text" id="prefix" placeholder="Enter a prefix" value="P">
+    </div>
+    <div id="drop-area">
+        <p>Drag and drop a CSV file here or click to select one.</p>
+        <input type="file" id="file-input" accept=".csv" style="display: none;">
+    </div>
+    <div id="table-container">
+        <table id="csv-table"></table>
+        <button id="copy-button">Copy to Clipboard</button>
+    </div>
+
+    <script>
+        // Declare sortedCoordinates outside of the handleFile function
+        let sortedCoordinates = [];
+
+        const dropArea = document.getElementById('drop-area');
+        const fileInput = document.getElementById('file-input');
+        const tableContainer = document.getElementById('table-container');
+        const csvTable = document.getElementById('csv-table');
+        const copyButton = document.getElementById('copy-button');
+        const prefixInput = document.getElementById('prefix');
+
+        dropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropArea.style.border = '2px dashed #007bff';
+        });
+
+        dropArea.addEventListener('dragleave', () => {
+            dropArea.style.border = '2px dashed #ccc';
+        });
+
+        dropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropArea.style.border = '2px dashed #ccc';
+            const file = e.dataTransfer.files[0];
+            handleFile(file);
+        });
+
+        dropArea.addEventListener('click', () => {
+            fileInput.click(); // Trigger the file input click event when the drop area is clicked
+        });
+
+        fileInput.addEventListener('change', () => {
+            const file = fileInput.files[0];
+            handleFile(file);
+        });
+
+        // Add an event listener to the prefix input field
+        prefixInput.addEventListener('input', updateTableWithPrefix);
+
+        function updateTableWithPrefix() {
+            const prefix = prefixInput.value || '';
+            const tableHTML = generateTableHTML(prefix, sortedCoordinates, headers);
+
+            // Display the updated table
+            csvTable.innerHTML = tableHTML;
+        }
+
+        // Define a function to generate table HTML based on prefix, coordinates, and headers
+        function generateTableHTML(prefix, coordinates, headers) {
+            let tableHTML = '<thead><tr><th>Name</th>';
+            headers.forEach(header => {
+                tableHTML += `<th>${header}</th>`;
+            });
+            tableHTML += '</tr></thead><tbody>';
+            coordinates.forEach((coord, index) => {
+                tableHTML += '<tr>';
+                tableHTML += `<td>${prefix}${index + 1}</td>`;
+                coord.forEach(val => {
+                    tableHTML += `<td>${val}</td>`;
+                });
+                tableHTML += '</tr>';
+            });
+            tableHTML += '</tbody>';
+
+            return tableHTML;
+        }
+
+        function handleFile(file) {
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const contents = e.target.result;
+                    const rows = contents.split('\n').map(row => row.trim()).filter(row => row !== '');
+
+                    // Extract headers from the first line
+                    const headers = rows[0].split(',');
+
+                    // Extract and sort unique coordinates by ascending x-coordinate
+                    const uniqueCoordinates = new Set();
+                    for (let i = 1; i < rows.length; i++) {
+                        const cells = rows[i].split(',');
+                        if (cells.length === 2) { // Ensure there are exactly 2 columns
+                            const x = parseFloat(cells[0]);
+                            const y = parseFloat(cells[1]);
+                            if (!isNaN(x) && !isNaN(y)) {
+                                const coordinateString = `${x},${y}`;
+                                uniqueCoordinates.add(coordinateString);
+                            }
+                        }
+                    }
+
+                    sortedCoordinates = [...uniqueCoordinates].map(coordinateString => {
+                        const [x, y] = coordinateString.split(',').map(parseFloat);
+                        return [x, y];
+                    }).sort((a, b) => a[0] - b[0]);
+
+                    // Get the user's prefix
+                    const prefix = prefixInput.value || '';
+
+                    // Generate the table HTML
+                    const tableHTML = generateTableHTML(prefix, sortedCoordinates, headers);
+
+                    // Display the table
+                    csvTable.innerHTML = tableHTML;
+                    tableContainer.style.display = 'block';
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        copyButton.addEventListener('click', () => {
+            const tableText = getTableTextWithoutHeaders();
+            copyToClipboard(tableText);
+        });
+
+        function copyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert('Table contents copied to clipboard!');
+        }
+
+        function getTableTextWithoutHeaders() {
+            const rows = Array.from(csvTable.getElementsByTagName('tr'));
+            rows.shift(); // Remove the first row (headers)
+            const tableText = rows.map((row) => {
+                const cells = Array.from(row.getElementsByTagName('td'));
+                return cells.map((cell) => cell.innerText).join('\t'); // Use tabs as a delimiter
+            }).join('\n');
+            return tableText;
+        }
+    </script>
+</body>
+</html>

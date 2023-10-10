@@ -1,0 +1,26 @@
+# Node modules
+node_modules/
+
+# Electron build and dist directories
+dist/
+release/
+out/
+electron-out/
+build/
+
+# Logs
+logs/
+*.log
+
+# Editor directories
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
